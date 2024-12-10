@@ -1,7 +1,7 @@
 import logging
 import requests
 from requests.adapters import HTTPAdapter
-from requests.packages.urllib3.util.retry import Retry
+from requests.packages.urllib3.util.retry import Retry # type: ignore
 
 from .parser import parse_html_content
 from .technology_checks import (
@@ -16,7 +16,9 @@ from .technology_checks import (
     detect_programming_languages,
     detect_cdn,
     detect_fonts,
-    detect_deployment_platform
+    detect_deployment_platform,
+    detect_ads_and_tracking,
+    detect_payment_integrations
 )
 from .exceptions import DetectionError
 from .config import REQUEST_TIMEOUT, MAX_RETRIES, BACKOFF_FACTOR
@@ -70,9 +72,9 @@ def detect_web_technologies(url):
     cookies = response.cookies
 
     soup = parse_html_content(html_content)
-    # Even if soup is None, we attempt partial detection from headers, cookies, etc.
 
     try:
+        # Existing detections
         detect_cms(html_content, headers, cookies, technologies)
         detect_js_frameworks(soup, technologies)
         detect_css_frameworks(soup, technologies)
@@ -85,10 +87,13 @@ def detect_web_technologies(url):
         detect_cdn(headers, technologies)
         detect_fonts(soup, technologies)
         detect_deployment_platform(headers, technologies)
+
+        # New detection functions added:
+        detect_ads_and_tracking(html_content, technologies)
+        detect_payment_integrations(html_content, technologies)
+
     except Exception as e:
-        # Catch any detection logic exceptions but return partial results
+        # Log exception but return partial results
         logging.exception("An unexpected error occurred during detection:")
-        # We don't return None here; we return partial results.
-        # This ensures that even if one detection fails, we still provide whatever we found.
 
     return technologies
